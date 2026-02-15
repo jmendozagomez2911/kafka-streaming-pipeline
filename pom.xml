@@ -4,41 +4,212 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.example</groupId>
+    <groupId>com.kafka.pipeline</groupId>
     <artifactId>kafka-streaming-pipeline</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>Kafka Streaming Pipeline</name>
+    <description>Production-style Kafka project in Scala with hexagonal architecture</description>
+
+    <modules>
+        <module>common</module>
+        <module>kafka-client</module>
+        <module>apps</module>
+    </modules>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <!-- Java -->
+        <java.version>17</java.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Scala -->
         <scala.version>2.12.18</scala.version>
+        <scala.binary.version>2.12</scala.binary.version>
+
+        <!-- Spark (declared, not used with spark.sql()) -->
+        <spark.version>3.5.4</spark.version>
+
+        <!-- Kafka clients 3.7.1: stable GA, fully Java 17 compatible, latest 3.7.x patch -->
+        <kafka.clients.version>3.7.1</kafka.clients.version>
+
+        <!-- Configuration -->
+        <typesafe.config.version>1.4.3</typesafe.config.version>
+
+        <!-- Logging -->
+        <slf4j.version>2.0.12</slf4j.version>
+        <logback.version>1.4.14</logback.version>
+
+        <!-- Testing -->
+        <scalatest.version>3.2.18</scalatest.version>
+        <mockito.version>1.17.30</mockito.version>
+
+        <!-- Plugins -->
+        <scala.maven.plugin.version>4.9.2</scala.maven.plugin.version>
+        <maven.surefire.version>3.2.5</maven.surefire.version>
+        <maven.shade.version>3.5.2</maven.shade.version>
+        <scoverage.plugin.version>2.0.2</scoverage.plugin.version>
+        <scalatest.maven.plugin.version>2.2.0</scalatest.maven.plugin.version>
     </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-            <version>${scala.version}</version>
-        </dependency>
-    </dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <!-- Scala -->
+            <dependency>
+                <groupId>org.scala-lang</groupId>
+                <artifactId>scala-library</artifactId>
+                <version>${scala.version}</version>
+            </dependency>
+
+            <!-- Kafka -->
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka-clients</artifactId>
+                <version>${kafka.clients.version}</version>
+            </dependency>
+
+            <!-- Configuration -->
+            <dependency>
+                <groupId>com.typesafe</groupId>
+                <artifactId>config</artifactId>
+                <version>${typesafe.config.version}</version>
+            </dependency>
+
+            <!-- Logging -->
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>${logback.version}</version>
+            </dependency>
+
+            <!-- Spark (declared per requirement, not actively used in kafka modules) -->
+            <dependency>
+                <groupId>org.apache.spark</groupId>
+                <artifactId>spark-core_${scala.binary.version}</artifactId>
+                <version>${spark.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.spark</groupId>
+                <artifactId>spark-sql_${scala.binary.version}</artifactId>
+                <version>${spark.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <!-- Internal modules -->
+            <dependency>
+                <groupId>com.kafka.pipeline</groupId>
+                <artifactId>common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.kafka.pipeline</groupId>
+                <artifactId>kafka-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- Testing -->
+            <dependency>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest_${scala.binary.version}</artifactId>
+                <version>${scalatest.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-scala_${scala.binary.version}</artifactId>
+                <version>${mockito.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
-        <plugins>
-            <plugin>
-                <groupId>net.alchim31.maven</groupId>
-                <artifactId>scala-maven-plugin</artifactId>
-                <version>4.9.2</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>testCompile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>net.alchim31.maven</groupId>
+                    <artifactId>scala-maven-plugin</artifactId>
+                    <version>${scala.maven.plugin.version}</version>
+                    <configuration>
+                        <scalaVersion>${scala.version}</scalaVersion>
+                        <args>
+                            <arg>-deprecation</arg>
+                            <arg>-feature</arg>
+                            <arg>-unchecked</arg>
+                        </args>
+                        <jvmArgs>
+                            <jvmArg>-Xms256m</jvmArg>
+                            <jvmArg>-Xmx1024m</jvmArg>
+                        </jvmArgs>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>compile</goal>
+                                <goal>testCompile</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven.surefire.version}</version>
+                    <configuration>
+                        <skipTests>true</skipTests>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.scalatest</groupId>
+                    <artifactId>scalatest-maven-plugin</artifactId>
+                    <version>${scalatest.maven.plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>test</id>
+                            <goals>
+                                <goal>test</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.scoverage</groupId>
+                    <artifactId>scoverage-maven-plugin</artifactId>
+                    <version>${scoverage.plugin.version}</version>
+                    <configuration>
+                        <scalaVersion>${scala.version}</scalaVersion>
+                        <minimumCoverage>90</minimumCoverage>
+                        <failOnMinimumCoverage>true</failOnMinimumCoverage>
+                        <highlighting>true</highlighting>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <phase>prepare-package</phase>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <version>${maven.shade.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 
 </project>

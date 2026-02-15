@@ -2,5 +2,10 @@
 <project version="4">
   <component name="ScalaCompilerConfiguration">
     <profile name="Maven 1" modules="kafka-streaming-pipeline" />
+    <profile name="Maven 2" modules="apps,common,kafka-client">
+      <option name="deprecationWarnings" value="true" />
+      <option name="uncheckedWarnings" value="true" />
+      <option name="featureWarnings" value="true" />
+    </profile>
   </component>
 </project>
