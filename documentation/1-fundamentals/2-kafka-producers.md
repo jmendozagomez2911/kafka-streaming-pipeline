@@ -35,22 +35,40 @@ Null key → partitioner balances load **without ordering guarantees**.
 
 ## 🏗️ 3) Architectural patterns + when to use
 
-### Pattern A — Keyless events (max throughput, no per-entity ordering)
+### Pattern A — **Keyless events** (max throughput, no per-entity ordering)
+
+**Goal:** spread load evenly and process at very high throughput.
+**What it means:** you don’t set a meaningful key (or you use a random key), so Kafka distributes events across partitions with no “per entity” ordering guarantee.
+
+**Topic/schema note:** this commonly looks like **one topic per event type**, because you’re not trying to keep a lifecycle together.
+Example: `order_created`, `payment_authorised`, `order_shipped` — each topic can have its own schema, and consumers can scale independently.
 
 Use when:
 
 * events are independent
-* ordering doesn’t matter
-* you want load spread and large batches
+* ordering doesn’t matter for correctness
+* you want maximum parallelism and large batches
 
-### Pattern B — Keyed events (ordering per entity + co-location)
+Typical examples:
+
+* logs, metrics, clickstream, independent notifications
+
+---
+
+### Pattern B — **Keyed events** (ordering per entity + co-location)
+
+**Goal:** keep all events for the same entity together and process them in sequence.
+**What it means:** you set a key like `order_id`, `user_id`, or `truck_id`. Kafka hashes the key and routes all events with the same key to the same partition. A consumer reads that partition in order, so events for that entity are processed sequentially (as produced).
+
+**Topic/schema note:** to get **ordering across different lifecycle event types**, you typically put them in **one topic for the whole lifecycle**, and include an `event_type` field in the value.
+Example: topic `order_events`, key = `order_id`, value = `{ event_type, payload }`. The payload can differ by type/version — Kafka doesn’t care, the consumer just needs to decode it.
 
 Use when:
 
-* you need correct sequencing per entity (truck_id, order_id, user_id)
-* you may want stateful processing keyed by entity
+* you need correct sequencing per entity (e.g., `OrderCreated → PaymentAuthorised → OrderShipped`)
+* you want stateful processing per entity (status machines, counters, balances, sessions)
 
-**Trade-off:** hot keys can create **hot partitions**.
+**Trade-off:** “hot keys” can create **hot partitions** (one partition becomes a bottleneck).
 
 ---
 
